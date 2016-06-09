@@ -9,32 +9,47 @@
 
 (def routes
   ["" {"/" :index
-       "/api"
-       {:get  {[""] :api}
-        :post {[""] :api}}}])
+       "/the-list" :the-list}])
 
 (defn generate-response [data & [status]]
   {:status  (or status 200)
    :headers {"Content-Type" "application/transit+json"}
    :body    data})
 
-(defn api [req]
-  (generate-response
-   ((om/parser {:read parser/readf :mutate parser/mutatef})
-    {:state (:state req)} (:remote (:transit-params req)))))
-
 (defn index [req]
   (assoc (resource-response (str "html/index.html") {:root "public"})
          :headers {"Content-Type" "text/html"}))
 
-(def state (atom {:app/title "initial server title"}))
+#_(def data {:the-list [[:item/by-name "A"]
+                      [:item/by-name "B"]
+                      [:item/by-name "C"]]
+           :item/by-name {"A" {:item/name "A"
+                               :item/another-basic-key 1
+                               :item/details 11}
+                          "B" {:item/name "B"
+                               :item/another-basic-key 2
+                               :item/details 12}
+                          "C" {:item/name "C"
+                               :item/another-basic-key 3
+                               :item/details 13}}})
+
+(def the-list [{:item/name "A"
+                :item/another-basic-key 1}
+               {:item/name "B"
+                :item/another-basic-key 2}
+               {:item/name "C"
+                :item/another-basic-key 3}])
+
+(def details {"A" {:item/details 11}
+              "B" {:item/details 12}
+              "C" {:item/details 13}})
 
 (defn handler [req]
   (let [match (bidi/match-route routes (:uri req)
                                 :request-method (:request-method req))]
     (case (:handler match)
       :index nil
-      :api (api (assoc req :state state))
+      :the-list (generate-response the-list)
       nil)))
 
 (def app

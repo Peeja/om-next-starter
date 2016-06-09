@@ -6,63 +6,72 @@
 
 (enable-console-print!)
 
+(defn logged [name f]
+  (fn [env key params]
+    (js/console.debug (str "> " name "\n" (with-out-str (cljs.pprint/pprint {:env env :key key :params params}))))
+    (let [ret (f env key params)]
+      (js/console.debug (str "< " name "\n" (with-out-str (cljs.pprint/pprint ret))))
+      ret)))
+
 (defmulti mutate om/dispatch)
-
-(defmethod mutate 'app/update-title
-  [{:keys [state]} _ {:keys [new-title]}]
-  {:remote true
-   :value [:app/title]
-   :action (fn [] (swap! state assoc :app/title new-title))})
-
-(defmethod mutate 'app/loading?
-  [{:keys [state]} _ _]
-  {:value [:loading?]
-   :action (fn [] (swap! state assoc :loading? true))})
 
 (defmulti read om/dispatch)
 
-(defmethod read :app/title
-  [{:keys [state] :as env} _ {:keys [remote?]}]
+(defmethod read :the-list
+  [{:keys [state query ast] :as env} key {:keys [remote?]}]
   (let [st @state]
-    (if-let [v (get st :app/title)]
-      {:value v :remote true}
-      {:remote true})))
+    {:value (om/db->tree query (get st key) st)
+     :the-list true}))
 
-(defmethod read :loading?
-  [{:keys [state] :as env} _ _]
-  (let [st @state]
-    (let [v (get st :loading? false)]
-      (if v
-        {:value v :remote true}
-        {:value v}))))
+(defui ListItem
+  static om/Ident
+  (ident [this props]
+    [:item/by-name (:item/name props)])
+  static om/IQuery
+  (query [this]
+    [:item/name :item/another-basic-key])
+  Object
+  (render [this]
+    (dom/li nil
+            (pr-str (:item/name (om/props this)))
+            ", "
+            (pr-str (:item/another-basic-key (om/props this)))
+            ", "
+            (pr-str (:item/details (om/props this))))))
+
+(def list-item (om/factory ListItem))
+
+(defui ListOfItems
+  Object
+  (render [this]
+    (apply dom/ul nil
+           (map list-item (om/props this)))))
+
+(def list-of-items (om/factory ListOfItems))
+
+#_(defui Details
+  Object
+  (render [this]
+    ))
 
 (defui Root
   static om/IQuery
   (query [this]
-    '[:app/title :loading?])
+    [{:the-list (om/get-query ListItem)}])
   Object
   (render [this]
-    (let [{:keys [app/title loading?]} (om/props this)]
+    (let [{:keys [the-list]} (om/props this)]
       (dom/div nil
-        (dom/p nil title)
-        (dom/p nil (pr-str loading?))
-        (dom/input #js {:ref :title})
-        (dom/button #js {:onClick
-                         (fn [e] (let [new-title (.-value (dom/node this :title))]
-                                   (om/transact! this `[(app/update-title {:new-title ~new-title})
-                                                        (app/loading?)
-                                                        :app/title
-                                                        :loading?
-                                                        ])))} "update")))))
+               (list-of-items the-list)))))
 
-(def parser (om/parser {:read read :mutate mutate}))
+(def parser (om/parser {:read (logged "read" read) :mutate (logged "mutate" mutate)}))
 
 (def reconciler
   (om/reconciler
-    {:state (atom {})
-     :normalize true
-     :merge-tree (fn [a b] (println "|merge" a b) (merge a b))
-     :parser parser
-     :send (util/transit-post "/api")}))
+   {:state (atom {})
+    :merge-tree (fn [a b] (println "|merge" a b) (merge a b))
+    :parser parser
+    :remotes [:the-list]
+    :send util/send}))
 
 (om/add-root! reconciler Root (gdom/getElement "app"))
