@@ -1,7 +1,8 @@
 (ns om-starter.util
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs.core.async :refer [chan put!]]
-            [cognitect.transit :as t])
+            [cognitect.transit :as t]
+            [om.next :as om])
   (:import [goog.net XhrIo]))
 
 (defn hidden [is-hidden]
@@ -40,6 +41,12 @@
 (defmethod send* :the-list
   [[_ query] cb]
   (transit-get "/the-list" #(cb {:the-list %})))
+
+(defmethod send* :item
+  [[_ query] cb]
+  (let [ast (om/query->ast query)
+        [_by-name name :as key] (-> ast :children first :key)]
+    (transit-get (str "/item/" name) #(cb {key %}))))
 
 (defn send [remotes cb]
   (doseq [remote-entry remotes]
