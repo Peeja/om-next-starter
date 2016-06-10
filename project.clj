@@ -10,4 +10,5 @@
                  [com.cognitect/transit-cljs "0.8.225"]
                  [cljs-http "0.1.30" :exclusions
                   [org.clojure/clojure org.clojure/clojurescript
-                   com.cognitect/transit-cljs]]])
+                   com.cognitect/transit-cljs]]
+                 [sablono "0.3.6"]])

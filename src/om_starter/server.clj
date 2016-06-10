@@ -9,7 +9,8 @@
 
 (def routes
   ["" {"/" :index
-       "/the-list" :the-list}])
+       "/the-list" :the-list
+       ["/item/" :name] :item}])
 
 (defn generate-response [data & [status]]
   {:status  (or status 200)
@@ -20,19 +21,6 @@
   (assoc (resource-response (str "html/index.html") {:root "public"})
          :headers {"Content-Type" "text/html"}))
 
-#_(def data {:the-list [[:item/by-name "A"]
-                      [:item/by-name "B"]
-                      [:item/by-name "C"]]
-           :item/by-name {"A" {:item/name "A"
-                               :item/another-basic-key 1
-                               :item/details 11}
-                          "B" {:item/name "B"
-                               :item/another-basic-key 2
-                               :item/details 12}
-                          "C" {:item/name "C"
-                               :item/another-basic-key 3
-                               :item/details 13}}})
-
 (def the-list [{:item/name "A"
                 :item/another-basic-key 1}
                {:item/name "B"
@@ -40,9 +28,12 @@
                {:item/name "C"
                 :item/another-basic-key 3}])
 
-(def details {"A" {:item/details 11}
-              "B" {:item/details 12}
-              "C" {:item/details 13}})
+(def details {"A" {:item/name "A"
+                   :item/details 11}
+              "B" {:item/name "B"
+                   :item/details 12}
+              "C" {:item/name "C"
+                   :item/details 13}})
 
 (defn handler [req]
   (let [match (bidi/match-route routes (:uri req)
@@ -50,6 +41,7 @@
     (case (:handler match)
       :index nil
       :the-list (generate-response the-list)
+      :item (generate-response (get details (-> match :route-params :name)))
       nil)))
 
 (def app
