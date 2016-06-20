@@ -36,6 +36,27 @@
         {:value v :remote true}
         {:value v}))))
 
+(defui FancyButtonWithClass
+  Object
+  (render [this]
+    (dom/button #js {:className "fancy"
+                     :onClick (:onClick (om/props this))}
+                (om/children this))))
+
+(def fancy-button-with-class (om/factory FancyButtonWithClass))
+
+(defn fancy-button-with-function-call [props children]
+  (dom/button #js {:className "fancy"
+                   :onClick (:onClick props)}
+              children))
+
+(defn fancy-button-with-function-as-component [props]
+  (dom/button #js {:className "fancy"
+                   :onClick (.-onClick props)}
+              (.-children props)))
+
+(def fancy-button-with-function-as-component-factory (js/React.createFactory fancy-button-with-function-as-component))
+
 (defui Root
   static om/IQuery
   (query [this]
@@ -44,16 +65,20 @@
   (render [this]
     (let [{:keys [app/title loading?]} (om/props this)]
       (dom/div nil
-        (dom/p nil title)
-        (dom/p nil (pr-str loading?))
-        (dom/input #js {:ref :title})
-        (dom/button #js {:onClick
-                         (fn [e] (let [new-title (.-value (dom/node this :title))]
-                                   (om/transact! this `[(app/update-title {:new-title ~new-title})
-                                                        (app/loading?)
-                                                        :app/title
-                                                        :loading?
-                                                        ])))} "update")))))
+               (dom/p nil title)
+               (dom/p nil (pr-str loading?))
+               (dom/input #js {:ref :title})
+               (let [click-handler (fn [e] (let [new-title (.-value (dom/node this :title))]
+                                             (om/transact! this `[(app/update-title {:new-title ~new-title})
+                                                                  (app/loading?)
+                                                                  :app/title
+                                                                  :loading?
+                                                                  ])))]
+                 (dom/div {}
+                          (fancy-button-with-class {:onClick click-handler} "update")
+                          (fancy-button-with-function-call {:onClick click-handler} "update")
+                          (js/React.createElement fancy-button-with-function-as-component #js {:onClick click-handler} "update")
+                          (fancy-button-with-function-as-component-factory #js {:onClick click-handler} "update")))))))
 
 (def parser (om/parser {:read read :mutate mutate}))
 
