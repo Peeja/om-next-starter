@@ -75,9 +75,24 @@
                                                                   :loading?
                                                                   ])))]
                  (dom/div {}
+
+                          ;; The reconciler will instantiate a
+                          ;; FancyButtonWithClass component for this one.
                           (fancy-button-with-class {:onClick click-handler} "update")
+
+                          ;; The reconciler will never know that we called this
+                          ;; function. It'll only see the DOM node elements this
+                          ;; function returns.
                           (fancy-button-with-function-call {:onClick click-handler} "update")
+
+                          ;; The reconciler will instantiate a
+                          ;; fancy-button-with-function-as-component component
+                          ;; for this one.
                           (js/React.createElement fancy-button-with-function-as-component #js {:onClick click-handler} "update")
+
+                          ;; This is exactly equivalent to the previous one,
+                          ;; with the convenience of not having to call
+                          ;; React.createElement.
                           (fancy-button-with-function-as-component-factory #js {:onClick click-handler} "update")))))))
 
 (def parser (om/parser {:read read :mutate mutate}))
