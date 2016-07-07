@@ -8,12 +8,16 @@
 
 (enable-console-print!)
 
-(defn logged [name f]
-  (fn [env key params]
-    (js/console.debug (str "> " name "\n" (with-out-str (cljs.pprint/pprint {:state @(:state env) :key key :params params}))))
-    (let [ret (f env key params)]
-      (js/console.debug (str "< " name "\n" (with-out-str (cljs.pprint/pprint ret))))
-      ret)))
+
+(defprotocol IQueryDelegate
+  (query-delegate [c]))
+
+(defn get-query [x]
+  (if (implements? IQueryDelegate x)
+    (om/get-query (query-delegate x))
+    (om/get-query x)))
+
+
 
 (defmulti mutate om/dispatch)
 
@@ -52,6 +56,8 @@
 (def list-item (om/factory ListItem))
 
 (defui ListOfItems
+  static IQueryDelegate
+  (query-delegate [this] ListItem)
   Object
   (render [this]
     (html
@@ -87,8 +93,8 @@
     {:selected-item-ident [:item/by-name "B"]})
   static om/IQuery
   (query [this]
-    [{:the-list (om/get-query ListItem)}
-     {'?selected-item-ident (om/get-query Details)}])
+    [{:the-list (get-query ListOfItems)}
+     {'?selected-item-ident (get-query Details)}])
   Object
   (render [this]
     (let [{:keys [the-list]} (om/props this)
@@ -99,7 +105,7 @@
                                            {:on-item-click #(om/set-query! this {:params {:selected-item-ident (om/get-ident %)}})}))
                (details selected-item)))))
 
-(def parser (om/parser {:read (logged "read" read) :mutate (logged "mutate" mutate)}))
+(def parser (om/parser {:read read :mutate mutate}))
 
 (def reconciler
   (om/reconciler
